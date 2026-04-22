@@ -153,6 +153,7 @@ SELECT tgname FROM pg_trigger WHERE tgname LIKE 'trg_%';
 |------|-------------|
 | **CREAZIONE_TABELLE.sql** | Script SQL completo per creazione database |
 | **UninaTaskBoard_Database_Documentazione.md** | Documentazione tecnica completa |
+| **UninaTaskBoard.drawio** | Diagramma ER (UML) in formato DrawIO |
 | **Tracce-Progetti-BD-POO-2026-2027.pdf** | Traccia ufficiale del progetto |
 | **README.md** | Questo file |
 
