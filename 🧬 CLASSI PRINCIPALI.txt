@@ -1,0 +1,128 @@
+🧬 CLASSI PRINCIPALI
+👤 Utente
+id_utente (PK)
+matricola
+nome
+cognome
+email
+password
+data_registrazione
+📁 Progetto (PADRE)
+id_progetto (PK)
+nome
+descrizione
+data_creazione
+numero_max_membri
+id_creatore (FK → Utente)
+📘 ProgettoEsame (FIGLIA di Progetto)
+id_progetto (PK, FK)
+materia
+data_esame
+docente
+💻 ProgettoSviluppo (FIGLIA di Progetto)
+id_progetto (PK, FK)
+repository_url
+👥 CLASSE DI ASSOCIAZIONE
+🔗 MembroProgetto (Utente ↔ Progetto)
+id_utente (PK, FK)
+id_progetto (PK, FK)
+ruolo (creatore, membro, team_leader)
+data_ingresso
+📩 INVITI
+✉️ Invito
+id_invito (PK)
+id_progetto (FK)
+id_mittente (FK → Utente)
+id_destinatario (FK → Utente)
+stato (pending, accettato, rifiutato)
+data_invito
+📌 ATTIVITÀ
+🧩 Attivita (PADRE)
+id_attivita (PK)
+id_progetto (FK)
+titolo
+descrizione
+data_creazione
+data_scadenza
+stato
+tipo
+📄 Documentazione (FIGLIA di Attivita)
+id_attivita (PK, FK)
+formato
+⚙️ Sviluppo (FIGLIA di Attivita)
+id_attivita (PK, FK)
+linguaggio_principale
+repository_url
+🔗 CLASSE DI ASSOCIAZIONE
+📌 Assegnazione (Utente ↔ Attivita)
+id_attivita (PK, FK)
+id_utente (PK, FK)
+data_assegnazione
+💾 SVILUPPO CODICE
+📂 FileCodice
+id_file (PK)
+id_attivita (FK → Sviluppo)
+nome_file
+percorso
+data_creazione
+🔄 Revisione
+id_revisione (PK)
+id_file (FK)
+id_autore (FK → Utente)
+data_modifica
+numero_versione
+nota_descrittiva
+💬 INTERAZIONE
+💬 Commento
+id_commento (PK)
+id_attivita (FK)
+id_utente (FK)
+testo
+timestamp_commento
+⭐ EXTRA
+⚡ Priorita
+id_priorita (PK)
+id_attivita (FK UNIQUE)
+livello
+data_assegnazione
+🔔 Notifica
+id_notifica (PK)
+id_attivita (FK)
+id_utente (FK)
+tipo
+letta
+data_creazione
+🔗 COLLEGAMENTI (CARDINALITÀ)
+👤 Utente
+1 → N Progetto (crea)
+N ↔ M Progetto (tramite MembroProgetto)
+N ↔ M Attivita (tramite Assegnazione)
+1 → N Revisione
+1 → N Commento
+1 → N Notifica
+1 → N Invito (mittente)
+1 → N Invito (destinatario)
+📁 Progetto
+1 → N Attivita
+1 → N Invito
+1 → 1 ProgettoEsame (opzionale)
+1 → 1 ProgettoSviluppo (opzionale)
+🧩 Attivita
+N → 1 Progetto
+1 → 1 Documentazione (opzionale)
+1 → 1 Sviluppo (opzionale)
+N ↔ M Utente (tramite Assegnazione)
+1 → N Commento
+1 → 0..1 Priorita
+1 → N Notifica
+⚙️ Sviluppo
+1 → N FileCodice
+📂 FileCodice
+1 → N Revisione
+🧠 RIASSUNTO CONCETTUALE
+✔ CLASSI PADRE/FIGLIO
+Progetto → ProgettoEsame, ProgettoSviluppo
+Attivita → Documentazione, Sviluppo
+✔ CLASSI DI ASSOCIAZIONE
+MembroProgetto (Utente ↔ Progetto)
+Assegnazione (Utente ↔ Attivita)

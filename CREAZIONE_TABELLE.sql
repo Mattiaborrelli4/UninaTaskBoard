@@ -42,19 +42,30 @@ CREATE TABLE utente (
 -- ============================================================================
 -- 2. TABELLA: progetto
 -- ============================================================================
--- SCOPO: Rappresenta un progetto collaborativo creato da uno studente
+-- 🔰 TIPOLOGIA: CLASSE PADRE (ha classi figlie: progetto_esame, progetto_sviluppo)
+--
+-- SCOPO: Rappresenta un progetto collaborativo creato da uno studente.
+--         È la classe base della gerarchia (specializzata in progetto_esame/progetto_sviluppo)
 --
 -- COLLEGAMENTI (Molteplicità):
---  - utente (N:1)        → Un progetto è CREATO da un utente (id_creatore)
---  - membro_progetto (1:N) → Un progetto HA molti membri
---  - attivita (1:N)      → Un progetto CONTIENE molte attività
+--  - utente (N:1)               → Un progetto è CREATO da un utente (id_creatore)
+--  - membro_progetto (1:N)      → Un progetto HA molti membri
+--  - attivita (1:N)             → Un progetto CONTIENE molte attività
+--  - progetto_esame (1:0..1)    → Un progetto PUØ essere un progetto d'esame
+--  - progetto_sviluppo (1:0..1) → Un progetto PUØ essere un progetto di sviluppo
 --
 -- CAMPI:
---  - id_progetto:        Identificativo univoco del progetto
---  - nome:               Nome del progetto (es. "Progetto Basi di Dati")
---  - descrizione:        Descrizione dettagliata del progetto
---  - data_creazione:     Data di creazione del progetto
---  - id_creatore:        Riferimento all'utente che ha creato il progetto
+--  - id_progetto:         Identificativo univoco del progetto
+--  - nome:                Nome del progetto (es. "Progetto Basi di Dati")
+--  - descrizione:         Descrizione dettagliata del progetto
+--  - data_creazione:      Data di creazione del progetto
+--  - numero_max_membri:   Numero massimo di membri ammessi nel progetto
+--  - id_creatore:         Riferimento all'utente che ha creato il progetto
+--
+-- NOTA: Il campo 'tipo' (che potrebbe essere aggiunto) fungerebbe da discriminatore per la gerarchia:
+--       Se il progetto è d'esame → esiste record in tabella progetto_esame
+--       Se il progetto è di sviluppo → esiste record in tabella progetto_sviluppo
+--       Un progetto può essere entrambi o nessuno dei due.
 -- ============================================================================
 
 CREATE TABLE progetto (
@@ -62,20 +73,95 @@ CREATE TABLE progetto (
     nome VARCHAR(100) NOT NULL,
     descrizione TEXT,
     data_creazione DATE NOT NULL DEFAULT CURRENT_DATE,
+    numero_max_membri INTEGER NOT NULL DEFAULT 5,
     id_creatore INTEGER NOT NULL,
 
     -- Vincolo: il creatore deve esistere nella tabella utente
     CONSTRAINT fk_progetto_creatore FOREIGN KEY (id_creatore)
-        REFERENCES utente(id_utente) ON DELETE RESTRICT
+        REFERENCES utente(id_utente) ON DELETE RESTRICT,
+
+    -- Vincolo: numero massimo membri deve essere almeno 1
+    CONSTRAINT chk_max_membri CHECK (numero_max_membri >= 1)
 );
 
 
 
 -- ============================================================================
--- 3. TABELLA: membro_progetto
+-- 3. TABELLA: progetto_esame (FIGLIA di progetto)
 -- ============================================================================
--- SCOPO: Tabella ponte N:M che associa utenti a progetti con specifici ruoli
---         Registra chi partecipa a quale progetto e con quale ruolo
+-- 🔰 TIPOLOGIA: CLASSE FIGLIA di progetto (IS-A relationship)
+--
+-- SCOPO: Specializzazione di progetto per progetti relativi a esami universitari.
+--         Implementa il pattern Table Per Type (TPT) per la gerarchia.
+--         Rappresenta progetti collegati a corsi di studio.
+--
+-- COLLEGAMENTI (Molteplicità):
+--  - progetto (1:1) → Relazione 1:1 con tabella progetto (IS-A relationship)
+--                     Ogni progetto esame ha un record in progetto e uno qui
+--
+-- CAMPI:
+--  - id_progetto:  Chiave primaria e foreign key verso progetto (PK ereditata)
+--  - materia:      Nome del corso/esame (es. "Basi di Dati", "Programmazione II")
+--  - data_esame:   Data dell'appello d'esame (opzionale)
+--  - docente:      Nome del docente titolare del corso
+--
+-- NOTA: Se un progetto è un progetto_esame, DEVE esistere un record in questa
+--       tabella con lo stesso id_progetto. Un progetto può essere sia esame che sviluppo.
+-- ============================================================================
+
+CREATE TABLE progetto_esame (
+    id_progetto INTEGER PRIMARY KEY,
+    materia VARCHAR(100) NOT NULL,
+    data_esame DATE,
+    docente VARCHAR(100),
+
+    -- Foreign Key al progetto padre (relazione 1:1)
+    CONSTRAINT fk_progetto_esame_progetto FOREIGN KEY (id_progetto)
+        REFERENCES progetto(id_progetto) ON DELETE CASCADE
+);
+
+
+
+-- ============================================================================
+-- 4. TABELLA: progetto_sviluppo (FIGLIA di progetto)
+-- ============================================================================
+-- 🔰 TIPOLOGIA: CLASSE FIGLIA di progetto (IS-A relationship)
+--
+-- SCOPO: Specializzazione di progetto per progetti di sviluppo software.
+--         Implementa il pattern Table Per Type (TPT) per la gerarchia.
+--         Rappresenta progetti con repository git e codice sorgente.
+--
+-- COLLEGAMENTI (Molteplicità):
+--  - progetto (1:1) → Relazione 1:1 con tabella progetto (IS-A relationship)
+--                     Ogni progetto di sviluppo ha un record in progetto e uno qui
+--
+-- CAMPI:
+--  - id_progetto:     Chiave primaria e foreign key verso progetto (PK ereditata)
+--  - repository_url:  Link al repository Git (GitHub, GitLab, Bitbucket, etc.)
+--
+-- NOTA: Se un progetto è un progetto_sviluppo, DEVE esistere un record in questa
+--       tabella con lo stesso id_progetto. Un progetto può essere sia esame che sviluppo.
+-- ============================================================================
+
+CREATE TABLE progetto_sviluppo (
+    id_progetto INTEGER PRIMARY KEY,
+    repository_url VARCHAR(255),
+
+    -- Foreign Key al progetto padre (relazione 1:1)
+    CONSTRAINT fk_progetto_sviluppo_progetto FOREIGN KEY (id_progetto)
+        REFERENCES progetto(id_progetto) ON DELETE CASCADE
+);
+
+
+
+-- ============================================================================
+-- 5. TABELLA: membro_progetto
+-- ============================================================================
+-- 🔰 TIPOLOGIA: TABELLA DI ASSOCIAZIONE N:M (Utente ↔ Progetto)
+--
+-- SCOPO: Tabella ponte N:M che associa utenti a progetti con specifici ruoli.
+--         Registra chi partecipa a quale progetto e con quale ruolo.
+--         Implementa l'associazione molti-a-molti tra Utente e Progetto.
 --
 -- COLLEGAMENTI (Molteplicità):
 --  - utente (N:1)        → Un utente può essere membro di molti progetti
@@ -85,11 +171,12 @@ CREATE TABLE progetto (
 -- CAMPI:
 --  - id_utente:          Riferimento all'utente membro
 --  - id_progetto:        Riferimento al progetto
---  - ruolo:              Ruolo nel progetto: 'creatore' o 'membro'
+--  - ruolo:              Ruolo nel progetto: 'creatore', 'membro' o 'team_leader'
 --  - data_ingresso:      Data in cui l'utente è entrato nel progetto
 --
 -- NOTA: La PK composta (id_utente, id_progetto) garantisce che un utente
---       non possa essere membro dello stesso progetto più volte
+--       non possa essere membro dello stesso progetto più volte.
+--       Questa tabella risolve l'associazione N:M tra Utente e Progetto.
 -- ============================================================================
 
 CREATE TABLE membro_progetto (
@@ -108,22 +195,25 @@ CREATE TABLE membro_progetto (
     CONSTRAINT fk_membro_progetto_progetto FOREIGN KEY (id_progetto)
         REFERENCES progetto(id_progetto) ON DELETE CASCADE,
 
-    -- Vincolo: ruolo può essere solo 'creatore' o 'membro'
-    CONSTRAINT chk_ruolo CHECK (ruolo IN ('creatore', 'membro'))
+    -- Vincolo: ruolo può essere 'creatore', 'membro' o 'team_leader'
+    CONSTRAINT chk_ruolo CHECK (ruolo IN ('creatore', 'membro', 'team_leader'))
 );
 
 
 
 -- ============================================================================
--- 4. TABELLA: attivita
+-- 6. TABELLA: attivita
 -- ============================================================================
--- SCOPO: Entità centrale che rappresenta ogni singola attività di un progetto
---         È la tabella padre della gerarchia (specializzata in documentazione/sviluppo)
+-- 🔰 TIPOLOGIA: CLASSE PADRE (ha classi figlie: documentazione, sviluppo)
+--
+-- SCOPO: Entità centrale che rappresenta ogni singola attività di un progetto.
+--         È la tabella padre della gerarchia (specializzata in documentazione/sviluppo).
+--         Implementa il pattern Table Per Type (TPT) per la gerarchia.
 --
 -- COLLEGAMENTI (Molteplicità):
 --  - progetto (N:1)      → Un'attività appartiene a un solo progetto
---  - documentazione (1:1) → Un'attività PUÒ essere di documentazione (esclusiva)
---  - sviluppo (1:1)      → Un'attività PUÒ essere di sviluppo (esclusiva)
+--  - documentazione (1:0..1) → Un'attività PUÒ essere di documentazione (esclusiva)
+--  - sviluppo (1:0..1)      → Un'attività PUÒ essere di sviluppo (esclusiva)
 --  - assegnazione (1:N)  → Un'attività può essere assegnata a molti membri
 --  - file_codice (1:N)   → Un'attività di sviluppo ha molti file
 --  - commento (1:N)      → Un'attività può ricevere molti commenti
@@ -140,9 +230,10 @@ CREATE TABLE membro_progetto (
 --  - stato:              Stato di avanzamento: non_iniziata | in_corso | completata
 --  - tipo:               Tipo di attività: documentazione | sviluppo
 --
--- NOTA: Il campo 'tipo' funge da discriminatore per la gerarchia
+-- NOTA: Il campo 'tipo' funge da discriminatore per la gerarchia:
 --       Se tipo='documentazione' → esiste record in tabella documentazione
 --       Se tipo='sviluppo' → esiste record in tabella sviluppo
+--       Una attività può essere di un solo tipo (documentazione XOR sviluppo).
 -- ============================================================================
 
 CREATE TABLE attivita (
@@ -172,10 +263,13 @@ CREATE TABLE attivita (
 
 
 -- ============================================================================
--- 5. TABELLA: documentazione
+-- 7. TABELLA: documentazione (FIGLIA di attivita)
 -- ============================================================================
--- SCOPO: Specializzazione di attivita per contenuti documentali (PDF, DOCX, etc)
---         Implementa il pattern Table Per Type (TPT) per la gerarchia
+-- 🔰 TIPOLOGIA: CLASSE FIGLIA di attivita (IS-A relationship)
+--
+-- SCOPO: Specializzazione di attivita per contenuti documentali (PDF, DOCX, etc).
+--         Implementa il pattern Table Per Type (TPT) per la gerarchia.
+--         Rappresenta attività che producono documentazione.
 --
 -- COLLEGAMENTI (Molteplicità):
 --  - attivita (1:1)      → Relazione 1:1 con tabella attivita (IS-A relationship)
@@ -201,10 +295,13 @@ CREATE TABLE documentazione (
 
 
 -- ============================================================================
--- 6. TABELLA: sviluppo
+-- 8. TABELLA: sviluppo (FIGLIA di attivita)
 -- ============================================================================
--- SCOPO: Specializzazione di attivita per sviluppo software (codice sorgente)
---         Implementa il pattern Table Per Type (TPT) per la gerarchia
+-- 🔰 TIPOLOGIA: CLASSE FIGLIA di attivita (IS-A relationship)
+--
+-- SCOPO: Specializzazione di attivita per sviluppo software (codice sorgente).
+--         Implementa il pattern Table Per Type (TPT) per la gerarchia.
+--         Rappresenta attività che producono codice.
 --
 -- COLLEGAMENTI (Molteplicità):
 --  - attivita (1:1)      → Relazione 1:1 con tabella attivita (IS-A relationship)
@@ -233,10 +330,13 @@ CREATE TABLE sviluppo (
 
 
 -- ============================================================================
--- 7. TABELLA: assegnazione
+-- 9. TABELLA: assegnazione
 -- ============================================================================
--- SCOPO: Tabella ponte N:M che assegna attività a membri del progetto
---         Gestisce chi deve fare cosa (responsabilità delle attività)
+-- 🔰 TIPOLOGIA: TABELLA DI ASSOCIAZIONE N:M (Utente ↔ Attivita)
+--
+-- SCOPO: Tabella ponte N:M che assegna attività a membri del progetto.
+--         Gestisce chi deve fare cosa (responsabilità delle attività).
+--         Implementa l'associazione molti-a-molti tra Utente e Attivita.
 --
 -- COLLEGAMENTI (Molteplicità):
 --  - attivita (N:1)      → Un'attività può essere assegnata a più membri
@@ -250,6 +350,7 @@ CREATE TABLE sviluppo (
 --
 -- NOTA: Il trigger check_assegnazione_membro garantisce che l'utente assegnato
 --       sia effettivamente membro del progetto a cui appartiene l'attività.
+--       Questa tabella risolve l'associazione N:M tra Utente e Attivita.
 -- ============================================================================
 
 CREATE TABLE assegnazione (
@@ -271,7 +372,7 @@ CREATE TABLE assegnazione (
 
 
 -- ============================================================================
--- 8. TABELLA: file_codice
+-- 10. TABELLA: file_codice
 -- ============================================================================
 -- SCOPO: Memorizza i file sorgente associati alle attività di sviluppo
 --         Rappresenta il codice effettivo prodotto dal gruppo
@@ -307,7 +408,7 @@ CREATE TABLE file_codice (
 
 
 -- ============================================================================
--- 9. TABELLA: revisione
+-- 11. TABELLA: revisione
 -- ============================================================================
 -- SCOPO: Traccia lo storico delle modifiche apportate a ogni file di codice
 --         Permette di vedere chi ha modificato cosa, quando e perché
@@ -347,7 +448,7 @@ CREATE TABLE revisione (
 
 
 -- ============================================================================
--- 10. TABELLA: commento
+-- 12. TABELLA: commento
 -- ============================================================================
 -- SCOPO: Permette ai membri di un progetto di lasciare commenti sulle attività
 --         Facilita la comunicazione e la collaborazione
@@ -385,7 +486,7 @@ CREATE TABLE commento (
 
 
 -- ============================================================================
--- 11. TABELLA: priorita (EXTRA - solo per progetti con >=3 membri)
+-- 13. TABELLA: priorita (EXTRA - solo per progetti con >=3 membri)
 -- ============================================================================
 -- SCOPO: Permette di assegnare priorità alle attività (solo progetti grandi)
 --         Funzionalità EXTRA disponibile solo per progetti con almeno 3 membri
@@ -424,7 +525,7 @@ CREATE TABLE priorita (
 
 
 -- ============================================================================
--- 12. TABELLA: notifica (EXTRA - solo per progetti con >=3 membri)
+-- 14. TABELLA: notifica (EXTRA - solo per progetti con >=3 membri)
 -- ============================================================================
 -- SCOPO: Invia notifiche ai membri per scadenze imminenti o cambi di stato
 --         Funzionalità EXTRA disponibile solo per progetti con almeno 3 membri
@@ -733,13 +834,22 @@ CREATE TRIGGER trg_check_notifica_3_membri
 -- RIEPILOGO FINALE
 -- ============================================================================
 -- Database: UninaTaskBoard
--- Tabelle: 12 (10 principali + 2 EXTRA per progetti >=3 membri)
+-- Tabelle: 14 (12 principali + 2 EXTRA per progetti >=3 membri)
 -- Trigger: 7 (vincoli logici + controlli EXTRA)
 -- Vincoli: 20+ (PK, FK, CHECK, UNIQUE)
 --
+-- Gerarchie implementate (Table Per Type - TPT):
+--  1. Gerarchia PROGETTO: progetto (PADRE) → progetto_esame, progetto_sviluppo (FIGLIE)
+--  2. Gerarchia ATTIVITA: attivita (PADRE) → documentazione, sviluppo (FIGLIE)
+--
+-- Tabelle di associazione N:M:
+--  1. membro_progetto (Utente ↔ Progetto)
+--  2. assegnazione (Utente ↔ Attivita)
+--
 -- Pattern implementati:
---  - Table Per Type (TPT) per gerarchia attivita/documentazione/sviluppo
+--  - Table Per Type (TPT) per entrambe le gerarchie
 --  - N:M associations per membri_progetto e assegnazione
 --  - Trigger per business rules complesse
 --  - Functional dependencies EXTRA condizionate
+--  - Relazioni IS-A ben definite per classi padre/figlie
 -- ============================================================================

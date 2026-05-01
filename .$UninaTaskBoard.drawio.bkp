@@ -1,6 +1,6 @@
-<mxfile host="Electron">
+<mxfile host="app.diagrams.net">
   <diagram name="Pagina-1" id="1DEjLADhSoPvjDoMPaJ_">
-    <mxGraphModel dx="4003" dy="1993" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2430" dy="1263" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -436,8 +436,7 @@
           <mxGeometry relative="1" x="1" as="geometry" />
         </mxCell>
         <mxCell id="6j3WjHG2Xrf5-_g77Q5--384" edge="1" parent="1" source="6j3WjHG2Xrf5-_g77Q5--261" style="curved=1;startArrow=none;endArrow=none;exitX=1;exitY=0.6;entryX=0.68;entryY=0;rounded=0;" target="6j3WjHG2Xrf5-_g77Q5--335" value="riceve">
-          <mxGeometry relative="1" x="0.4581" as="geometry">
-            <mxPoint y="-1" as="offset" />
+          <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1711" y="991" />
               <mxPoint x="1711" y="1643" />
