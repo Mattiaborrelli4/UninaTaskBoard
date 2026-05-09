@@ -1,4 +1,4 @@
-# UninaTaskBoard – Documentazione Basi di Dati
+# UninaTaskBoard – Documentazione Basi di Dati (Migliorata)
 **Corso di Studi in Informatica – Federico II**
 **A.A. 2025/2026 | Traccia 3**
 
@@ -49,7 +49,7 @@ L'obiettivo del database è modellare e persistere in modo efficiente:
 
 ---
 
-## 3. Schema Logico
+## 3. Schema Logico (Migliorato con ENUM)
 
 ### Tabella: `utente`
 
@@ -61,7 +61,7 @@ Contiene le informazioni di tutti gli utenti registrati alla piattaforma.
 | `matricola` | VARCHAR(10) | UNIQUE, NOT NULL | Matricola universitaria |
 | `nome` | VARCHAR(50) | NOT NULL | Nome dell'utente |
 | `cognome` | VARCHAR(50) | NOT NULL | Cognome dell'utente |
-| `email` | VARCHAR(100) | UNIQUE, NOT NULL | Email istituzionale |
+| `email` | VARCHAR(100) | UNIQUE, NOT NULL (Regex) | Email istituzionale (@studenti.unina.it) |
 | `password` | VARCHAR(255) | NOT NULL | Password cifrata |
 | `data_registrazione` | DATE | NOT NULL, DEFAULT CURRENT_DATE | Data di iscrizione alla piattaforma |
 
@@ -89,7 +89,7 @@ Tabella ponte N:M tra utente e progetto. Registra chi partecipa a quale progetto
 |---|---|---|---|
 | `id_utente` | INTEGER | PK, FK → utente(id_utente) | Membro del progetto |
 | `id_progetto` | INTEGER | PK, FK → progetto(id_progetto) | Progetto di appartenenza |
-| `ruolo` | VARCHAR(20) | NOT NULL, CHECK IN ('creatore','membro') | Ruolo nel progetto |
+| `ruolo` | ENUM | NOT NULL (`ruolo_membro`) | Ruolo nel progetto ('creatore', 'membro') |
 | `data_ingresso` | DATE | NOT NULL, DEFAULT CURRENT_DATE | Data di accettazione dell'invito |
 
 ---
@@ -106,153 +106,66 @@ Entità centrale. Rappresenta ogni singola attività di un progetto.
 | `descrizione` | TEXT | | Descrizione estesa |
 | `data_creazione` | DATE | NOT NULL, DEFAULT CURRENT_DATE | Data di creazione |
 | `data_scadenza` | DATE | CHECK > data_creazione | Scadenza opzionale |
-| `stato` | VARCHAR(20) | NOT NULL, CHECK IN ('non_iniziata','in_corso','completata') | Stato corrente |
-| `tipo` | VARCHAR(20) | NOT NULL, CHECK IN ('documentazione','sviluppo') | Tipo di attività |
+| `stato` | ENUM | NOT NULL (`stato_attivita`) | Stato corrente |
+| `tipo` | ENUM | NOT NULL (`tipo_attivita`) | Tipo di attività |
 
 ---
 
-### Tabella: `sviluppo`
-
-Specializzazione di `attivita` per le attività di tipo sviluppo. Estende con dati specifici del codice.
+### Tabella: `priorita` (EXTRA)
 
 | Colonna | Tipo | Vincoli | Descrizione |
 |---|---|---|---|
-| `id_attivita` | INTEGER | PK, FK → attivita(id_attivita) | Riferimento all'attività padre |
-| `linguaggio_principale` | VARCHAR(50) | | Linguaggio di programmazione principale usato |
-| `repository_url` | VARCHAR(255) | | Link opzionale al repository esterno |
+| `id_priorita` | SERIAL | PK | Identificatore univoco |
+| `id_attivita` | INTEGER | FK → attivita(id_attivita), NOT NULL (UNIQUE) | Attività associata |
+| `livello` | ENUM | NOT NULL (`livello_priorita`) | Livello priorità |
+| `data_assegnazione` | DATE | NOT NULL, DEFAULT CURRENT_DATE | Data assegnazione |
 
 ---
 
-### Tabella: `documentazione`
-
-Specializzazione di `attivita` per le attività di tipo documentazione.
+### Tabella: `notifica` (EXTRA)
 
 | Colonna | Tipo | Vincoli | Descrizione |
 |---|---|---|---|
-| `id_attivita` | INTEGER | PK, FK → attivita(id_attivita) | Riferimento all'attività padre |
-| `formato` | VARCHAR(30) | | Formato del documento (es. PDF, DOCX, Markdown) |
+| `id_notifica` | SERIAL | PK | Identificatore univoco |
+| `id_attivita` | INTEGER | FK → attivita(id_attivita), NOT NULL | Attività sorgente |
+| `id_utente` | INTEGER | FK → utente(id_utente), NOT NULL | Destinatario |
+| `tipo` | ENUM | NOT NULL (`tipo_notifica`) | Tipo notifica |
+| `letta` | BOOLEAN | NOT NULL, DEFAULT FALSE | Stato lettura |
+| `data_creazione` | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Data invio |
 
 ---
 
-### Tabella: `assegnazione`
+## 4. Trigger e Procedure Implementate
 
-Tabella ponte N:M tra attività e utenti. Un'attività può essere assegnata a più membri.
-
-| Colonna | Tipo | Vincoli | Descrizione |
-|---|---|---|---|
-| `id_attivita` | INTEGER | PK, FK → attivita(id_attivita) | Attività assegnata |
-| `id_utente` | INTEGER | PK, FK → utente(id_utente) | Membro responsabile |
-| `data_assegnazione` | DATE | NOT NULL, DEFAULT CURRENT_DATE | Data dell'assegnazione |
-
-> **Vincolo logico (Trigger):** l'utente assegnato deve essere membro del progetto a cui appartiene l'attività.
-
----
-
-### Tabella: `file_codice`
-
-Rappresenta un file sorgente associato a un'attività di sviluppo.
-
-| Colonna | Tipo | Vincoli | Descrizione |
-|---|---|---|---|
-| `id_file` | SERIAL | PK | Identificatore univoco |
-| `id_attivita` | INTEGER | FK → sviluppo(id_attivita), NOT NULL | Attività di sviluppo di appartenenza |
-| `nome_file` | VARCHAR(100) | NOT NULL | Nome del file (es. Main.java) |
-| `percorso` | VARCHAR(255) | | Percorso relativo nel progetto |
-| `data_creazione` | DATE | NOT NULL, DEFAULT CURRENT_DATE | Data di primo caricamento |
-
----
-
-### Tabella: `revisione`
-
-Storico delle revisioni di un file di codice. Ogni modifica viene tracciata.
-
-| Colonna | Tipo | Vincoli | Descrizione |
-|---|---|---|---|
-| `id_revisione` | SERIAL | PK | Identificatore univoco |
-| `id_file` | INTEGER | FK → file_codice(id_file), NOT NULL | File modificato |
-| `id_autore` | INTEGER | FK → utente(id_utente), NOT NULL | Chi ha effettuato la modifica |
-| `data_modifica` | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Data e ora della modifica |
-| `numero_versione` | INTEGER | NOT NULL | Numero progressivo di versione |
-| `nota_descrittiva` | TEXT | NOT NULL | Breve descrizione della modifica effettuata |
-
-> **Vincolo logico (Trigger):** il numero di versione deve essere incrementale per ogni file.
-
----
-
-### Tabella: `commento`
-
-Commenti lasciati dai membri su qualsiasi attività.
-
-| Colonna | Tipo | Vincoli | Descrizione |
-|---|---|---|---|
-| `id_commento` | SERIAL | PK | Identificatore univoco |
-| `id_attivita` | INTEGER | FK → attivita(id_attivita), NOT NULL | Attività commentata |
-| `id_utente` | INTEGER | FK → utente(id_utente), NOT NULL | Autore del commento |
-| `testo` | TEXT | NOT NULL | Contenuto del commento |
-| `timestamp_commento` | TIMESTAMP | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Data e ora del commento |
-
-> **Vincolo logico (Trigger):** l'utente che commenta deve essere membro del progetto a cui appartiene l'attività.
-
----
-
-## 4. Trigger e Procedure Previste
-
-### Trigger obbligatori
+### Trigger
 
 | Nome | Evento | Descrizione |
 |---|---|---|
-| `check_assegnazione_membro` | BEFORE INSERT su `assegnazione` | Verifica che l'utente da assegnare sia membro del progetto dell'attività |
-| `check_commento_membro` | BEFORE INSERT su `commento` | Verifica che l'utente che commenta sia membro del progetto |
-| `check_scadenza_attivita` | BEFORE INSERT/UPDATE su `attivita` | Verifica che la data di scadenza sia successiva alla data di creazione |
-| `autoincrement_versione` | BEFORE INSERT su `revisione` | Calcola automaticamente il numero di versione come MAX + 1 per quel file |
-| `check_tipo_file` | BEFORE INSERT su `file_codice` | Verifica che l'attività associata sia di tipo `sviluppo` e sia presente nella tabella `sviluppo` |
+| `check_assegnazione_membro` | BEFORE INSERT su `assegnazione` | Verifica che l'utente sia membro del progetto |
+| `check_commento_membro` | BEFORE INSERT su `commento` | Verifica che l'utente sia membro del progetto |
+| `check_scadenza_attivita` | BEFORE INSERT/UPDATE su `attivita` | Verifica coerenza temporale |
+| `autoincrement_versione` | BEFORE INSERT su `revisione` | Calcola versione MAX + 1 |
+| `check_tipo_file` | BEFORE INSERT su `file_codice` | Verifica coerenza gerarchia sviluppo |
+| `auto_membro_creatore` | AFTER INSERT su `progetto` | **(NEW)** Aggiunge automaticamente il creatore tra i membri |
+| `genera_notifica_stato` | AFTER UPDATE su `attivita` | **(NEW)** Genera notifiche automatiche al cambio stato (progetti >= 3 membri) |
 
-### Procedure consigliate
+### Procedure e Funzioni
 
-| Nome | Descrizione |
-|---|---|
-| `aggiungi_membro_progetto` | Aggiunge un utente a un progetto, gestendo duplicati e ruoli |
-| `cambia_stato_attivita` | Aggiorna lo stato di un'attività con validazione della transizione |
-| `get_report_progetto` | Restituisce statistiche di un progetto: totale attività, completate, in corso, revisioni medie per file |
-| `get_attivita_per_membro` | Ritorna tutte le attività assegnate a un utente in un dato progetto |
-
----
-
-## 5. Considerazioni sulla Progettazione
-
-### Perché certi attributi stanno in certe tabelle
-
-**`ruolo` in `membro_progetto` e non in `utente`**
-Il ruolo non è una proprietà fissa della persona, ma dipende dal contesto del progetto. Lo stesso utente può essere *creatore* in un progetto e semplice *membro* in un altro. Inserirlo in `utente` avrebbe significato avere un solo ruolo globale per persona, il che è concettualmente errato. Collocarlo in `membro_progetto` permette di avere ruoli diversi per ogni coppia utente-progetto.
-
-**`linguaggio_principale` e `repository_url` in `sviluppo` e non in `attivita`**
-Questi attributi hanno senso solo per le attività che riguardano codice sorgente. Inserirli in `attivita` avrebbe prodotto valori NULL obbligatori per tutte le attività di documentazione, sporcando lo schema. Separandoli nella tabella figlia `sviluppo`, ogni tabella contiene solo attributi coerenti con il suo dominio.
-
-**`formato` in `documentazione` e non in `attivita`**
-Stesso ragionamento: il formato (PDF, DOCX, Markdown...) è una caratteristica che appartiene solo ai documenti, non alle attività di sviluppo. Tenerlo separato rende lo schema più pulito e le query più espressive.
-
-**`nota_descrittiva` in `revisione` e non in `file_codice`**
-La nota descrive una singola operazione di modifica, non il file nel suo complesso. Un file accumula nel tempo molte revisioni, ognuna con la sua motivazione specifica. Mettere la nota in `file_codice` avrebbe permesso di descrivere solo lo stato attuale, perdendo tutto lo storico.
-
-**`data_ingresso` in `membro_progetto` e non in `utente`**
-La data di ingresso si riferisce al momento in cui un utente è entrato in uno specifico progetto, non a quando si è registrato alla piattaforma. Un utente entra in momenti diversi in progetti diversi, quindi l'informazione appartiene alla relazione, non all'entità.
+| Nome | Tipo | Descrizione |
+|---|---|---|
+| `aggiungi_membro_progetto` | PROCEDURE | Aggiunge un utente a un progetto |
+| `cambia_stato_attivita` | PROCEDURE | Aggiorna lo stato di un'attività |
+| `get_report_progetto` | FUNCTION | Restituisce statistiche aggregate di un progetto |
 
 ---
 
-### Scelta della gerarchia per le attività
+## 5. Miglioramenti Architetturali
 
-La gerarchia `attivita` → `sviluppo` / `documentazione` è implementata con il pattern **Table per Type (TPT)**: una tabella padre con gli attributi comuni e due tabelle figlie con gli attributi specifici. Questa scelta garantisce integrità referenziale e semplicità nelle query generali sulle attività.
-
-L'attributo `tipo` nella tabella `attivita` funge da discriminatore e viene verificato tramite trigger per garantire coerenza con la tabella figlia popolata.
-
-### Scelta del DBMS
-
-Come indicato nelle specifiche del progetto, si utilizza **PostgreSQL** (scelta consigliata). Le funzionalità specifiche di PostgreSQL utilizzate includono: `SERIAL` per le chiavi primarie auto-incrementali, `CURRENT_TIMESTAMP` per i timestamp automatici, e la sintassi PL/pgSQL per trigger e procedure.
-
-### Integrità referenziale
-
-Tutte le chiavi esterne usano `ON DELETE CASCADE` quando la cancellazione del padre deve propagarsi ai figli (es. cancellare un progetto rimuove le attività e le assegnazioni), e `ON DELETE RESTRICT` quando la cancellazione non deve essere permessa se esistono dipendenze (es. non si può cancellare un utente se ha revisioni registrate).
+1.  **Tipi ENUM**: Sostituiti i vincoli stringa con tipi enumerativi per migliori performance e pulizia.
+2.  **Viste (Views)**: Introdotte `vista_attivita_dettagliata` e `vista_membri_progetto` per semplificare le query complesse.
+3.  **Indici**: Aggiunti indici sulle chiavi esterne per ottimizzare le operazioni di join e ricerca.
+4.  **Automazione**: Il database ora gestisce autonomamente l'iscrizione del creatore e la generazione di notifiche.
 
 ---
 
-*Documento redatto per il corso di Basi di Dati – Gr. 1 | Federico II Napoli | A.A. 2025/2026*
+*Documento aggiornato dal Jules per il progetto UninaTaskBoard | A.A. 2025/2026*
